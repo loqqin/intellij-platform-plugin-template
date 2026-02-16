@@ -38,6 +38,7 @@ dependencies {
     intellijPlatform {
         intellijIdea(providers.gradleProperty("platformVersion"))
 
+        bundledPlugin("com.intellij.java")
         // Plugin Dependencies. Uses `platformBundledPlugins` property from the gradle.properties file for bundled IntelliJ Platform plugins.
         bundledPlugins(providers.gradleProperty("platformBundledPlugins").map { it.split(',') })
 
@@ -50,6 +51,8 @@ dependencies {
         testFramework(TestFrameworkType.Platform)
     }
 }
+
+tasks.jar { duplicatesStrategy = DuplicatesStrategy.EXCLUDE }
 
 // Configure IntelliJ Platform Gradle Plugin - read more: https://plugins.jetbrains.com/docs/intellij/tools-intellij-platform-gradle-plugin-extension.html
 intellijPlatform {
