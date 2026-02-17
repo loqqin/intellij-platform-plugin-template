@@ -5,6 +5,7 @@ import com.intellij.codeInsight.lookup.LookupElementBuilder;
 import com.intellij.lang.Language;
 import com.intellij.patterns.PsiJavaPatterns;
 import com.intellij.psi.*;
+import com.intellij.psi.util.InheritanceUtil;
 import com.intellij.psi.util.PsiTreeUtil;
 import com.intellij.psi.util.PsiUtil;
 import com.intellij.util.ProcessingContext;
@@ -56,32 +57,38 @@ public class SimpleCompletionContributor extends CompletionContributor {
                   log.error("field name " + field.getName() + " " + field.getType().getCanonicalText());
                 }
                 String methodName = method.getName();
-                if ((methodName.equals("get") || methodName.equals("set")) && className.equals("skyblock.utils.DataHolder")) {
-                  PsiExpression qualifier = call.getMethodExpression().getQualifierExpression();
-                  if (qualifier != null) {
-                    PsiType qualifierType = qualifier.getType();
-                    if (qualifierType != null) {
-                      PsiClass qualifierClass = PsiUtil.resolveClassInType(qualifierType);
-                      if (qualifierClass != null) {
-                        System.out.println("qualifierClass.getName() = " + (qualifierClass.getQualifiedName()));
-                        for (PsiField field : qualifierClass.getFields()) {
-                          if (field.hasModifierProperty(PsiModifier.STATIC)) {
-                            String canonicalText = field.getType().getCanonicalText();
-                            if (canonicalText.startsWith("skyblock.utils.DataHolder.Key<")) {
-                              LookupElementBuilder lookupElement = LookupElementBuilder.create(qualifierClass.getName() + "." + field.getName())
-                                .withTypeText(field.getType().getPresentableText(), true)
-                                .withLookupStrings(List.of(field.getName(), field.getType().getCanonicalText()));
-                              result.addElement(PrioritizedLookupElement.withPriority(lookupElement, 1000));
-                              System.out.println("add field " + canonicalText);
+                if ((methodName.equals("get") || methodName.equals("set") || methodName.equals("ifPresent")) /*&& className.equals("skyblock.utils.DataHolder")*/) {
+                  if (InheritanceUtil.isInheritor(containingClass, "skyblock.utils.DataHolder")) {
+                    System.out.println("inheritor");
+                    PsiExpression qualifier = call.getMethodExpression().getQualifierExpression();
+                    if (qualifier != null) {
+                      PsiType qualifierType = qualifier.getType();
+                      if (qualifierType != null) {
+                        PsiClass qualifierClass = PsiUtil.resolveClassInType(qualifierType);
+                        if (qualifierClass != null) {
+                          System.out.println("qualifierClass.getName() = " + (qualifierClass.getQualifiedName()));
+                          for (PsiField field : fields(qualifierClass)) {
+                            if (field.hasModifierProperty(PsiModifier.STATIC)) {
+                              String canonicalText = field.getType().getCanonicalText();
+                              if (canonicalText.startsWith("skyblock.utils.DataHolder.Key<")) {
+                                LookupElementBuilder lookupElement = LookupElementBuilder.create(qualifierClass.getName() + "." + field.getName())
+                                  .withTypeText(field.getType().getPresentableText(), true)
+                                  .withLookupStrings(List.of(field.getName(), field.getType().getCanonicalText()));
+                                result.addElement(PrioritizedLookupElement.withPriority(lookupElement, 1000));
+                                System.out.println("add field " + canonicalText);
 //                                fields.add(field);
+                              }
+                              log.error("Static field: " + field.getName() + " "
+                                + canonicalText);
                             }
-                            log.error("Static field: " + field.getName() + " "
-                              + canonicalText);
                           }
                         }
                       }
                     }
+                  } else {
+                    System.out.println("not inheritor");
                   }
+
                 }
                 log.error("Method: " + methodName + " in class: " + className);
               }
@@ -96,4 +103,17 @@ public class SimpleCompletionContributor extends CompletionContributor {
       });
   }
 
+  private static ArrayList<PsiField> fields(PsiClass psiClass) {
+    PsiClass current = psiClass;
+    ArrayList<PsiField> psiFields = new ArrayList<>();
+    while (current != null) {
+      for (PsiField field : current.getFields()) {
+        if (field.hasModifierProperty(PsiModifier.STATIC)) {
+          psiFields.add(field);
+        }
+      }
+      current = current.getSuperClass(); // идём вверх по наследованию }
+    }
+    return psiFields;
+  }
 }
