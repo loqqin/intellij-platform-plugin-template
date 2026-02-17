@@ -6,10 +6,14 @@ import com.intellij.lang.Language;
 import com.intellij.patterns.PsiJavaPatterns;
 import com.intellij.psi.*;
 import com.intellij.psi.util.PsiTreeUtil;
+import com.intellij.psi.util.PsiUtil;
 import com.intellij.util.ProcessingContext;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class SimpleCompletionContributor extends CompletionContributor {
 
@@ -38,18 +42,56 @@ public class SimpleCompletionContributor extends CompletionContributor {
           PsiMethodCallExpression call = PsiTreeUtil.getParentOfType(parameters.getPosition(), PsiMethodCallExpression.class);
           log.error("call " + call + " " + call.getText() + "  " + call.getArgumentList());
           log.error("refname " + call.getMethodExpression().getReferenceName());
+          {
+
+          }
+          ArrayList<PsiField> fields = new ArrayList<>();
           if (call != null) {
             PsiMethod method = call.resolveMethod();
             if (method != null) {
               PsiClass containingClass = method.getContainingClass();
               if (containingClass != null) {
                 String className = containingClass.getQualifiedName();
+                for (PsiField field : containingClass.getFields()) {
+                  log.error("field name " + field.getName() + " " + field.getType().getCanonicalText());
+                }
                 String methodName = method.getName();
+                if ((methodName.equals("get") || methodName.equals("set")) && className.equals("skyblock.utils.DataHolder")) {
+                  PsiExpression qualifier = call.getMethodExpression().getQualifierExpression();
+                  if (qualifier != null) {
+                    PsiType qualifierType = qualifier.getType();
+                    if (qualifierType != null) {
+                      PsiClass qualifierClass = PsiUtil.resolveClassInType(qualifierType);
+                      if (qualifierClass != null) {
+                        System.out.println("qualifierClass.getName() = " + (qualifierClass.getQualifiedName()));
+                        for (PsiField field : qualifierClass.getFields()) {
+                          if (field.hasModifierProperty(PsiModifier.STATIC)) {
+                            String canonicalText = field.getType().getCanonicalText();
+                            if (canonicalText.startsWith("skyblock.utils.DataHolder.Key<")) {
+                              LookupElementBuilder lookupElement = LookupElementBuilder.create(qualifierClass.getName() + "." + field.getName())
+                                .withTypeText(field.getType().getPresentableText(), true)
+                                .withLookupStrings(List.of(field.getName(), field.getType().getCanonicalText()));
+                              result.addElement(PrioritizedLookupElement.withPriority(lookupElement, 1000));
+                              System.out.println("add field " + canonicalText);
+//                                fields.add(field);
+                            }
+                            log.error("Static field: " + field.getName() + " "
+                              + canonicalText);
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
                 log.error("Method: " + methodName + " in class: " + className);
               }
             }
           }
-          result.addElement(LookupElementBuilder.create("Hello 123"));
+//          result.addElement(LookupElementBuilder.create("Hello 123"));
+          System.out.println("fields = " + (fields));
+//          for (PsiField field : fields) {
+//            result.addElement(LookupElementBuilder.create(field));
+//          }
         }
       });
   }
