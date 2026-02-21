@@ -20,6 +20,7 @@ public class SimpleCompletionContributor extends CompletionContributor {
 
   private static final Logger log = LoggerFactory.getLogger(SimpleCompletionContributor.class);
 
+  // todo должно работать онли на 1 позиции курсора потому что в ifpresent мешает
   public SimpleCompletionContributor() {
     extend(CompletionType.BASIC,
       PsiJavaPatterns.psiElement()
@@ -41,6 +42,9 @@ public class SimpleCompletionContributor extends CompletionContributor {
           log.error("parent " + parent);
           log.error("Parent: " + parent.getClass().getName());
           PsiMethodCallExpression call = PsiTreeUtil.getParentOfType(parameters.getPosition(), PsiMethodCallExpression.class);
+          if (call == null) {
+            return;
+          }
           log.error("call " + call + " " + call.getText() + "  " + call.getArgumentList());
           log.error("refname " + call.getMethodExpression().getReferenceName());
           {
